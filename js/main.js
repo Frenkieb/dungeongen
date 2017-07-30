@@ -38,21 +38,6 @@ var Room = function(x, y, w, h) {
     this.hasPlayer = false;
 }
 
-/*Room.prototype.paint = function(c) {
-    c.fillStyle = "#888";
-    c.fillRect(this.x * SQUARE, this.y * SQUARE,
-               this.w * SQUARE, this.h * SQUARE)
-}*/
-
-/*Room.prototype.drawPath = function(c, point) {
-    c.beginPath();
-    c.lineWidth   = SQUARE;
-    c.strokeStyle = "#888";
-    c.moveTo(this.center.x * SQUARE, this.center.y * SQUARE);
-    c.lineTo(point.x * SQUARE, point.y * SQUARE);
-    c.stroke();
-}*/
-
 var RoomContainer = function(x, y, w, h) {
     Room.call(this, x, y, w, h);
     this.room = undefined;
@@ -60,13 +45,6 @@ var RoomContainer = function(x, y, w, h) {
 
 RoomContainer.prototype = Object.create(Room.prototype);
 RoomContainer.prototype.constructor = RoomContainer;
-/*RoomContainer.prototype.paint = function(c) {
-    c.strokeStyle = "#0F0";
-    c.lineWidth   = 2;
-    c.strokeRect(this.x * SQUARE, this.y * SQUARE,
-               this.w * SQUARE, this.h * SQUARE);
-}*/
-
 RoomContainer.prototype.growRoom = function() {
     var x, y, w, h;
     x = this.x + random(0, Math.floor(this.w/3));
@@ -349,22 +327,13 @@ Map.prototype.placePlayer = function() {
 Map.prototype.placeCoins = function(){
     for(var i=0;i<this.rooms.length;i++) {
         if (!this.rooms[i].hasPlayer) {
-            this.grid[this.rooms[i].y + Math.floor(Math.random() * this.rooms[i].h +1)][this.rooms[i].x + Math.floor(Math.random() * this.rooms[i].w)+1] = '4';
+            this.grid[this.rooms[i].y + Math.floor(Math.random() * this.rooms[i].h)][this.rooms[i].x + Math.floor(Math.random() * this.rooms[i].w)] = '4';
             //console.log(this.rooms[i]);
             //console.log(Math.floor(Math.random() * this.rooms[i].h));
             //console.log(Math.floor(Math.random() * this.rooms[i].w));
         }
     }
 }
-
-/*Map.prototype.drawContainers = function() {
-    this.room_tree.paint(this.c)
-}*/
-
-/*Map.prototype.drawRooms = function() {
-    for (var i = 0; i < this.rooms.length; i++)
-        this.rooms[i].paint(this.c)
-}*/
 
 Map.prototype.paint = function() {
     this.clear()
@@ -424,6 +393,7 @@ function preload() {
     game.load.image('tilemap', 'assets/tilemap.png');
     game.load.image('player', 'assets/player.png');
     game.load.image('wall', 'assets/wall.png');
+    game.load.image('coin', 'assets/coin.png');
     game.dungeon = dungeon;
 }
 
@@ -435,8 +405,10 @@ function create() {
 
     game.wall_group = game.add.group();
     game.wall_group.enableBody = true;
-    //game.wall_group.immovable = true;
-    //game.physics.enable(game.wall_group);
+
+    game.coin_group = game.add.group();
+    game.coin_group.enableBody = true;
+
 
     for (var y=0; y<game.dungeon.length; y++) {
         var row = [];
@@ -449,11 +421,7 @@ function create() {
                 case '1':
                     // wall
                     row.push(1);
-                    var wall = game.add.sprite(x*50,y*50,'wall', 0, game.wall_group);
-                    wall.enableBody = true;
-                    wall.body.immovable = true;
-                    game.physics.enable(wall);
-                    game.wall_group.add(wall);
+                    game.add.sprite(x*50,y*50,'wall', 0, game.wall_group);
                     break;
                 case '2':
                     // door
@@ -466,14 +434,15 @@ function create() {
                 case '4':
                     // coin
                     row.push(0);
+                    game.add.sprite(x*50,y*50,'coin', 0, game.coin_group);
                     break;
             }
         }
         data += row.join() + "\n";
     }
 
+    // Walls are immovable.
     game.wall_group.setAll('body.immovable', true);
-    game.wall_group.setAll('body.gravity', 500);
 
     // Calculate the dungeon dimension.
     dungeon_height = (game.dungeon.length * 50) ;
@@ -485,9 +454,12 @@ function create() {
     game.player = game.add.sprite(150, 250, 'player');
     game.player.enableBody = true;
     game.physics.enable(game.player, Phaser.Physics.ARCADE);
-    game.player.body.collideWorldBounds = true;
 
+    // Follow the player.
     game.camera.follow(game.player);
+
+    // Add cursor input.
+    game.cursors = game.input.keyboard.createCursorKeys();
 
     // ========= Old Tilemap shit ============
     //  Add data to the cache
@@ -505,45 +477,49 @@ function create() {
     //map.setCollisionBetween(1, 12);
 
     //  Scroll it
-    //layer.resizeWorld();
     // ========= /Old Tilemap shit ============
-
-    cursors = game.input.keyboard.createCursorKeys();
+    //layer.resizeWorld();
 }
 
 function update() {
     // Make the player collide with the wall group.
-    game.physics.arcade.collide(game.player, game.wall_group, wall_collision);
-    //game.physics.arcade.collide(game.player, game.wall);
+    game.physics.arcade.collide(game.player, game.wall_group);
+
+    // Make the player collide with the coin group.
+    game.physics.arcade.collide(game.player, game.coin_group, coin_collision, null, this);
 
     game.player.body.velocity.x = 0
     game.player.body.velocity.y = 0
 
-    var move = 1000;
+    var move = 800;
 
-    if (cursors.left.isDown) {
+    if (game.cursors.left.isDown) {
         if (game.player.body.x > 0) {
             game.player.body.velocity.x -= move;
         }
-    } else if (cursors.right.isDown) {
+    } else if (game.cursors.right.isDown) {
         if (game.player.body.x < dungeon_width) {
             game.player.body.velocity.x += move;
         }
     }
 
-    if (cursors.up.isDown) {
+    if (game.cursors.up.isDown) {
         if ( game.player.body.y > 0 ) {
             game.player.body.velocity.y -= move;
         }
-    } else if (cursors.down.isDown) {
+    } else if (game.cursors.down.isDown) {
         if (game.player.body.y < dungeon_height) {
             game.player.body.velocity.y += move;
         }
     }
 }
-
-function wall_collision() {
-    //console.log('boom!');
+/**
+ * Collision player with coin.
+ * @param  {object} player [description]
+ * @param  {object} coin   [description]
+ */
+function coin_collision(player, coin) {
+    coin.kill();
 }
 
 // http://examples.phaser.io/_site/view_full.html?d=tilemaps&f=tile+callbacks.js&t=tile%20callbacks
