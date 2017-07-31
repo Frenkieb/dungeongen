@@ -1,4 +1,3 @@
-//SEED = CryptoJS.MD5("" + new Date().getTime()).toString();
 MAP_SIZE = 30;
 SQUARE   = 400 / MAP_SIZE;
 N_ITERATIONS = 4;
@@ -104,8 +103,8 @@ Tree.prototype.getLevel = function(level, queue) {
         this.rchild.paint(c);
 }*/
 
-Map = function(width, height, c) {
-    this.c = c;
+Map = function(width, height) {
+    //this.c = c;
     this.width = width;
     this.height = height;
     this.rooms = [];
@@ -130,7 +129,7 @@ Map.prototype.init = function() {
 
 Map.prototype.split_room = function(room, iter) {
     var Root = new Tree(room);
-    //room.paint(document.getElementById('viewport').getContext('2d'));
+
     if (iter != 0) {
         var sr = this.random_split(room);
 
@@ -236,13 +235,13 @@ Map.prototype.growRooms = function() {
     }
 }
 
-Map.prototype.clear = function() {
+/*Map.prototype.clear = function() {
     this.c.fillStyle = "#000";
     this.c.fillRect(0, 0, this.width, this.height);
-}
+}*/
 
 Map.prototype.drawGrid = function() {
-    var c = this.c
+    /*var c = this.c
     c.beginPath()
     c.strokeStyle = "rgba(255,255,255,0.4)"
     c.lineWidth = 1;
@@ -253,7 +252,7 @@ Map.prototype.drawGrid = function() {
         c.lineTo(MAP_SIZE * SQUARE, i * SQUARE)
     }
     c.stroke();
-    c.closePath();
+    c.closePath();*/
 }
 
 Map.prototype.drawTiles = function() {
@@ -297,7 +296,7 @@ Map.prototype.drawTiles = function() {
         y += 1;
     }
 
-    var svg = d3.select("body").append("svg")
+    var svg = d3.select("div").append("svg")
                                 .attr("width", 1000)
                                 .attr("height", 1000);
 
@@ -327,7 +326,8 @@ Map.prototype.placePlayer = function() {
 Map.prototype.placeCoins = function(){
     for(var i=0;i<this.rooms.length;i++) {
         if (!this.rooms[i].hasPlayer) {
-            this.grid[this.rooms[i].y + Math.floor(Math.random() * this.rooms[i].h)][this.rooms[i].x + Math.floor(Math.random() * this.rooms[i].w)] = '4';
+            //this.grid[this.rooms[i].y + Math.floor(Math.random() * this.rooms[i].h)][this.rooms[i].x + Math.floor(Math.random() * this.rooms[i].w)] = '4';
+            this.grid[this.rooms[i].center.y][this.rooms[i].center.x] = '4';
             //console.log(this.rooms[i]);
             //console.log(Math.floor(Math.random() * this.rooms[i].h));
             //console.log(Math.floor(Math.random() * this.rooms[i].w));
@@ -336,7 +336,7 @@ Map.prototype.placeCoins = function(){
 }
 
 Map.prototype.paint = function() {
-    this.clear()
+    //this.clear()
     /*if (D_BSP)
         this.drawContainers();
     if (D_ROOMS)
@@ -349,40 +349,28 @@ Map.prototype.paint = function() {
     this.placePlayer();
     this.placeCoins();
     this.drawTiles();
-    //console.log(this.rooms);
 }
 
-var map;
-
 function debug(stuff) {
-    $('#debug ul li.active').removeClass('active')
     $('#debug ul').prepend("<li class='active'>"+stuff+"</li>")
 }
 
 var initMap = function() {
     try {
         SQUARE = 400 / MAP_SIZE;
-        //Math.seedrandom(SEED)
-        var c = document.getElementById('viewport').getContext('2d');
+        //var c = document.getElementById('viewport').getContext('2d');
         var time = new Date();
-        map = new Map(400, 400, c);
+        var map = new Map(400, 400);
         map.paint();
         var exectime = new Date().getTime() - time.getTime();
-        debug("Map generated in " + exectime +" ms");
+        //debug("Map generated in " + exectime +" ms");
         return map.grid;
     } catch (exception) {
         debug(exception);
         // Regenerate map;
         initMap();
-        /*c.fillStyle = "#000";
-        c.fillRect(0,0,400,400);*/
     }
 }
-
-$(document).ready(function() {
-    //initMap();
-});
-
 
 var game = new Phaser.Game(800, 600, Phaser.CANVAS, 'phaser-example', { preload: preload, create: create, update: update });
 var dungeon_height = 0;
@@ -397,7 +385,6 @@ function preload() {
     game.dungeon = dungeon;
 }
 
-
 function create() {
     var data = '';
 
@@ -409,14 +396,13 @@ function create() {
     game.coin_group = game.add.group();
     game.coin_group.enableBody = true;
 
-
-    for (var y=0; y<game.dungeon.length; y++) {
+    for (var y=0; y < game.dungeon.length; y++) {
         var row = [];
         for (var x=0; x<game.dungeon[y].length; x++) {
             switch (game.dungeon[y][x]) {
                 case '0':
                     // floor
-                    row.push(3);
+                    //row.push(3);
                     break;
                 case '1':
                     // wall
@@ -425,15 +411,17 @@ function create() {
                     break;
                 case '2':
                     // door
-                    row.push(2);
+                    //row.push(2);
                     break;
                 case '3':
                     // player
-                    row.push(4);
+                    //row.push(4);
+                    // Add player.
+                    game.player = game.add.sprite(x*50, y*50, 'player');
                     break;
                 case '4':
                     // coin
-                    row.push(0);
+                    //row.push(0);
                     game.add.sprite(x*50,y*50,'coin', 0, game.coin_group);
                     break;
             }
@@ -450,13 +438,13 @@ function create() {
 
     game.world.setBounds(0, 0, dungeon_width, dungeon_height);
 
-    // Add player.
-    game.player = game.add.sprite(150, 250, 'player');
+    // Set player properties
     game.player.enableBody = true;
     game.physics.enable(game.player, Phaser.Physics.ARCADE);
 
     // Follow the player.
-    game.camera.follow(game.player);
+    //game.camera.follow(game.player);
+    game.camera.follow(game.player, Phaser.Camera.FOLLOW_LOCKON, 0.1, 0.1)
 
     // Add cursor input.
     game.cursors = game.input.keyboard.createCursorKeys();
